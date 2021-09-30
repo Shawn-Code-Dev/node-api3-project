@@ -1,17 +1,73 @@
+const User = require('../users/users-model')
+const yup = require('yup')
+
 function logger(req, res, next) {
-  // DO YOUR MAGIC
+  console.log(req.method, req.originalURL, Date.now())
+  next()
 }
 
-function validateUserId(req, res, next) {
-  // DO YOUR MAGIC
+async function validateUserId(req, res, next) {
+  try {
+    const userId = await User.getById(req.params.id)
+    if (!userId) {
+      next({ status: 404, message: 'user not found' })
+    } else {
+      req.user = userId
+      next()
+    }
+  } catch (err) {
+    next(err)
+  }
 }
 
-function validateUser(req, res, next) {
-  // DO YOUR MAGIC
+const userSchema = yup.object().shape({
+  name: yup
+    .string()
+    .typeError('Name must be a string')
+    .trim()
+    .required('missing required name field')
+    .matches(/^[aA-zZ\s]+$/, 'Only alphabetics are allowed for this field')
+})
+
+async function validateUser(req, res, next) {
+  try {
+    const user = await userSchema.validate(req.body)
+    req.body = user
+    next()
+  } catch (err) {
+    next({ status: 400, message: err.message })
+  }
 }
 
-function validatePost(req, res, next) {
-  // DO YOUR MAGIC
+const postSchema = yup.object().shape({
+  text: yup
+    .string()
+    .typeError('text must be a string')
+    .trim()
+    .required('missing required text field')
+    .matches(/^[aA-zZ\s]+$/, 'Only alphabetics are allowed for this field')
+})
+
+async function validatePost(req, res, next) {
+  try {
+    const post = await postSchema.validate(req.body)
+    req.body = post
+    next()
+  } catch (err) {
+    next({ status: 400, message: err.message })
+  }
+}
+//eslint-disable-next-line
+function errorHandling(err, req, res, next) {
+  res.status(err.status || 500).json({
+    message: err.message,
+  })
 }
 
-// do not forget to expose these functions to other modules
+module.exports = {
+  logger,
+  validateUserId,
+  validateUser,
+  validatePost,
+  errorHandling
+}
